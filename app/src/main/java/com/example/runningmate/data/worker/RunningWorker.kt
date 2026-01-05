@@ -12,64 +12,44 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import com.example.runningmate.R
-import com.example.runningmate.domain.repository.RunningRepository
-import com.example.runningmate.domain.model.RunningPath
+import com.example.runningmate.data.source.LocationDataSource
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.maps.model.LatLng
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.collect
 
-// [Location]: data/worker/RunningWorker.kt
 @HiltWorker
 class RunningWorker @AssistedInject constructor(
     @Assisted private val context: Context,
     @Assisted workerParams: WorkerParameters,
-    private val repository: RunningRepository
+    private val locationDataSource: LocationDataSource
 ) : CoroutineWorker(context, workerParams) {
 
     private val fusedLocationClient: FusedLocationProviderClient by lazy {
         LocationServices.getFusedLocationProviderClient(context)
     }
 
-    private val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000L).apply {
-        setMinUpdateIntervalMillis(2000L)
+    private val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000L).apply {
+        setMinUpdateIntervalMillis(1000L)
     }.build()
 
     override suspend fun doWork(): Result {
         setForeground(createForegroundInfo())
         
-        // This worker needs to keep running to track location.
-        // We will collect location updates and save/emit them.
-        // In a real MVI app with 'Repository -> ViewModel' flow, 
-        // this worker might populate a SharedFlow in a Singleton DataSource 
-        // or just write to DB. 
-        // For this strict request, we'll assume we write strictly to DB or similar.
-        // However, DB IO every second is heavy. 
-        // But for "Data Flow: Worker -> Repository -> UseCase", let's simulate the collection.
-        
-        // Note: Actual continuously running logic in CoroutineWorker requires a loop or collection.
-        
-        val locationTracking = callbackFlow<Unit> {
+        val locationTracking = callbackFlow<LatLng> {
             val callback = object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
                     result.locations.forEach { location ->
-                        // Send location to repository/shared flow
-                        // For simplicity in this structure: Log or TODO
-                        // To strictly follow "Worker -> Repository", we'd call repository.addPoint(location)
-                        // But RunningRepository interface above expects RunEntity (full run).
-                        // We likely need a 'LocationRepository' or modify RunningRepository to accept points.
-                        // I will assume for now we just keep the service alive.
-                        // In a real app, I would inject a LocalLocationDataSource that exposes a StateFlow.
-                        trySend(Unit)
+                        val latLng = LatLng(location.latitude, location.longitude)
+                        trySend(latLng)
                     }
                 }
             }
@@ -91,8 +71,9 @@ class RunningWorker @AssistedInject constructor(
             }
         }
 
-        locationTracking.collect { 
-            // Keep running
+        locationTracking.collect { latLng ->
+            locationDataSource.emitLocation(latLng)
+            locationDataSource.addPathPoint(latLng)
         }
 
         return Result.success()

@@ -1,11 +1,14 @@
 package com.example.runningmate.domain.use_case
 
+import android.content.Context
+import androidx.work.WorkManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
-// [Location]: domain/use_case/PauseRunningUseCase.kt
-class PauseRunningUseCase @Inject constructor() {
+class PauseRunningUseCase @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
     operator fun invoke() {
-        // Business logic for pausing
-        // e.g. Updating state in repository to 'PAUSED' if we tracked state there.
+        WorkManager.getInstance(context).cancelUniqueWork("RunningTracking")
     }
 }

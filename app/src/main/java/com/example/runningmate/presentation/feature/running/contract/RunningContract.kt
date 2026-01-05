@@ -22,7 +22,8 @@ sealed class RunningIntent : UiIntent {
     object StartRunning : RunningIntent()
     object PauseRunning : RunningIntent()
     object StopRunning : RunningIntent()
-    object ToggleRun : RunningIntent() // Optional convenience
+    object ToggleRun : RunningIntent()
+    object PermissionGranted : RunningIntent()
 }
 
 sealed class RunningEffect : UiEffect {

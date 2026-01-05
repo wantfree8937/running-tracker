@@ -26,45 +26,67 @@ class RunningViewModel @Inject constructor(
 ) : BaseViewModel<RunningState, RunningIntent, RunningEffect>(RunningState()) {
 
     private var timerJob: Job? = null
+    private var locationJob: Job? = null
+    private var sharedLocationJob: Job? = null
     private var lastLocation: LatLng? = null
 
     init {
-        viewModelScope.launch {
-            observeLocationUseCase()
-                .collect { location ->
-                    setState {
-                        if (!isRunning) {
-                            copy(currentLocation = location)
-                        } else {
-                            // Filter jitter (e.g., < 3 meters)
-                            val lastLoc = pathPoints.lastOrNull() ?: lastLocation
-                            val distance = if (lastLoc != null) {
-                                calculateDistance(lastLoc, location)
-                            } else 0f
-
-                            if (lastLoc == null || distance >= 3f) {
-                                val newPath = pathPoints + location
-                                copy(
-                                    currentLocation = location,
-                                    pathPoints = newPath,
-                                    distanceMeters = distanceMeters + distance
-                                )
-                            } else {
-                                this // No change if jitter
-                            }
-                        }
-                    }
-                }
-        }
+        startObservingSharedLocation()
     }
 
     override fun handleIntent(intent: RunningIntent) {
         when (intent) {
+            is RunningIntent.PermissionGranted -> {
+                startObservingLocation()
+            }
             is RunningIntent.StartRunning -> startRunning()
             is RunningIntent.PauseRunning -> pauseRunning()
             is RunningIntent.StopRunning -> stopRunning()
             is RunningIntent.ToggleRun -> {
                 if (currentState.isRunning) pauseRunning() else startRunning()
+            }
+        }
+    }
+
+    private fun startObservingSharedLocation() {
+        if (sharedLocationJob?.isActive == true) return
+        
+        sharedLocationJob = viewModelScope.launch {
+            // Collect the entire path list regardless of isRunning state
+            observeLocationUseCase.pathPointsFlow.collect { path ->
+                if (path.isNotEmpty()) {
+                    setState { 
+                        copy(
+                            pathPoints = path,
+                            currentLocation = path.lastOrNull() ?: currentLocation,
+                            distanceMeters = calculateTotalDistance(path)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun calculateTotalDistance(path: List<LatLng>): Float {
+        var total = 0f
+        for (i in 0 until path.size - 1) {
+            total += calculateDistance(path[i], path[i + 1])
+        }
+        return total
+    }
+
+    private fun startObservingLocation() {
+        if (locationJob?.isActive == true) return
+
+        locationJob = viewModelScope.launch {
+            try {
+                android.util.Log.d("RunningViewModel", "Starting location observation")
+                observeLocationUseCase()
+                    .collect { location ->
+                        setState { copy(currentLocation = location) }
+                    }
+            } catch (e: Exception) {
+                android.util.Log.e("RunningViewModel", "Error observing location", e)
             }
         }
     }
