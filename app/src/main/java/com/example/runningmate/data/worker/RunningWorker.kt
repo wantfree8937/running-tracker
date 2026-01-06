@@ -42,7 +42,13 @@ class RunningWorker @AssistedInject constructor(
     }.build()
 
     override suspend fun doWork(): Result {
-        setForeground(createForegroundInfo())
+        android.util.Log.d("RunningWorker", "Worker started")
+        try {
+            setForeground(createForegroundInfo())
+            android.util.Log.d("RunningWorker", "setForeground successful")
+        } catch (e: Exception) {
+            android.util.Log.e("RunningWorker", "Failed to setForeground", e)
+        }
         
         val locationTracking = callbackFlow<LatLng> {
             val callback = object : LocationCallback() {
@@ -80,19 +86,22 @@ class RunningWorker @AssistedInject constructor(
     }
 
     private fun createForegroundInfo(): ForegroundInfo {
-        val channelId = "running_channel"
+        val channelId = "running_channel_v2"
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Running Notification", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(channelId, "Running Notification", NotificationManager.IMPORTANCE_DEFAULT)
             notificationManager.createNotificationChannel(channel)
         }
 
         val notification: Notification = NotificationCompat.Builder(context, channelId)
             .setContentTitle("Running Tracker Active")
             .setContentText("Tracking your run...")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setSmallIcon(com.example.runningmate.R.drawable.ic_launcher_foreground)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .build()
             
         // Use type 8 (FOREGROUND_SERVICE_TYPE_LOCATION) if API >= 30, but the const is standard now.
