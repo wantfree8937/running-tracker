@@ -153,13 +153,13 @@ fun RunningScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), // Reduced radius
             color = MaterialTheme.colorScheme.surface,
             shadowElevation = 16.dp
         ) {
             Column(
                 modifier = Modifier
-                    .padding(24.dp)
+                    .padding(vertical = 16.dp, horizontal = 24.dp) // Reduced padding
                     .navigationBarsPadding(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -174,12 +174,12 @@ fun RunningScreen(
                         )
                 )
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp)) // Reduced spacer
 
                 // --- Primary Stat: Distance ---
                 Text(
                     text = "DISTANCE",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall, // Smaller label
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -188,15 +188,15 @@ fun RunningScreen(
                     text = "%.2f".format(state.distanceMeters / 1000f),
                     style = MaterialTheme.typography.displayLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 80.sp // Really big
+                        fontSize = 64.sp // Reduced from 80.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "KILOMETERS",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 24.dp)
+                    modifier = Modifier.padding(bottom = 16.dp) // Reduced padding
                 )
 
                 // --- Secondary Stats Row: Duration & Pace ---
@@ -213,7 +213,7 @@ fun RunningScreen(
                         )
                         Text(
                             text = formatDuration(state.durationMillis),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), // Reduced style
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -237,12 +237,12 @@ fun RunningScreen(
                         )
                         Text(
                             text = paceText,
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), // Reduced style
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     
-                    // Calories (Placeholder/Future proof)
+                    // Calories
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                          Text(
                             text = "KCAL",
@@ -251,13 +251,13 @@ fun RunningScreen(
                         )
                         Text(
                             text = state.caloriesBurned.toString(),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), // Reduced style
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp)) // Reduced spacer
 
                 // --- Controls ---
                 Row(
@@ -272,7 +272,8 @@ fun RunningScreen(
                             icon = Icons.Default.Pause,
                             contentDescription = "Pause",
                             color = MaterialTheme.colorScheme.secondaryContainer,
-                            iconColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            size = 80.dp // Reduced from 96.dp
                         )
                     } else {
                          // RESUME / START Button
@@ -281,24 +282,25 @@ fun RunningScreen(
                             icon = Icons.Default.PlayArrow,
                             contentDescription = "Start",
                             color = MaterialTheme.colorScheme.primary,
-                            iconColor = MaterialTheme.colorScheme.onPrimary
+                            iconColor = MaterialTheme.colorScheme.onPrimary,
+                            size = 80.dp // Reduced from 96.dp
                         )
                     }
 
                     // STOP Button (Only if active)
                     if (state.isRunActive && !state.isRunning) {
-                        Spacer(modifier = Modifier.width(32.dp))
+                        Spacer(modifier = Modifier.width(24.dp))
                         BigControlButton(
                             onClick = { showFinishDialog = true },
                             icon = Icons.Default.Stop,
                             contentDescription = "Stop",
                             color = MaterialTheme.colorScheme.error,
                             iconColor = MaterialTheme.colorScheme.onError,
-                            size = 64.dp // Slightly smaller
+                            size = 64.dp // Kept same or slightly reduced logic relative to main
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp)) // Reduced bottom spacer
             }
         }
 

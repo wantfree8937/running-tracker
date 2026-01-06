@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 // [Location]: presentation/feature/running/RunningViewModel.kt
+// [Location]: presentation/feature/running/RunningViewModel.kt
 @HiltViewModel
 class RunningViewModel @Inject constructor(
     private val startRunningUseCase: StartRunningUseCase,
@@ -28,7 +29,10 @@ class RunningViewModel @Inject constructor(
     private var timerJob: Job? = null
     private var locationJob: Job? = null
     private var sharedLocationJob: Job? = null
-    private var lastLocation: LatLng? = null
+    
+    // For speed calculation
+    private var lastLocationTime: Long = 0L
+    private var lastDistanceForSpeed: Float = 0f
 
     init {
         startObservingSharedLocation()
@@ -55,11 +59,17 @@ class RunningViewModel @Inject constructor(
             // Collect the entire path list regardless of isRunning state
             observeLocationUseCase.pathPointsFlow.collect { path ->
                 if (path.isNotEmpty()) {
+                    val currentDistance = calculateTotalDistance(path)
+                    val newSpeed = calculateCurrentSpeed(currentDistance)
+                    val newCalories = calculateCalories(currentDistance)
+                    
                     setState { 
                         copy(
                             pathPoints = path,
                             currentLocation = path.lastOrNull() ?: currentLocation,
-                            distanceMeters = calculateTotalDistance(path)
+                            distanceMeters = currentDistance,
+                            currentSpeedKmh = newSpeed,
+                            caloriesBurned = newCalories
                         )
                     }
                 }
@@ -73,6 +83,38 @@ class RunningViewModel @Inject constructor(
             total += calculateDistance(path[i], path[i + 1])
         }
         return total
+    }
+    
+    private fun calculateCurrentSpeed(currentDistance: Float): Float {
+        val now = System.currentTimeMillis()
+        if (lastLocationTime == 0L) {
+            lastLocationTime = now
+            lastDistanceForSpeed = currentDistance
+            return 0f
+        }
+        
+        val timeDiff = now - lastLocationTime
+        if (timeDiff > 2000) { // Update speed if more than 2 seconds passed (to avoid noise)
+            val distanceDiff = currentDistance - lastDistanceForSpeed
+            if (distanceDiff < 0) return 0f // Should not happen
+            
+            // Speed in m/s
+            val speedMs = distanceDiff / (timeDiff / 1000f)
+            // Speed in km/h
+            val speedKmh = speedMs * 3.6f
+            
+            lastLocationTime = now
+            lastDistanceForSpeed = currentDistance
+            
+            // Filter crazy spikes
+            return if (speedKmh > 40f) currentState.currentSpeedKmh else speedKmh
+        }
+        return currentState.currentSpeedKmh // Keep previous speed
+    }
+
+    private fun calculateCalories(distanceMeters: Float): Int {
+        // Approx 60 kcal per km for average person
+        return (distanceMeters / 1000f * 60).toInt()
     }
 
     private fun startObservingLocation() {
@@ -94,6 +136,10 @@ class RunningViewModel @Inject constructor(
     private fun startRunning() {
         if (timerJob?.isActive == true) return
         
+        // Reset speed calc helpers on start/resume
+        lastLocationTime = System.currentTimeMillis()
+        lastDistanceForSpeed = currentState.distanceMeters
+        
         timerJob = viewModelScope.launch {
             while (true) {
                 delay(1000L)
@@ -112,7 +158,7 @@ class RunningViewModel @Inject constructor(
         timerJob = null
         viewModelScope.launch {
             pauseRunningUseCase()
-            setState { copy(isRunning = false) }
+            setState { copy(isRunning = false, currentSpeedKmh = 0f) } // Reset speed on pause
         }
     }
 
@@ -125,7 +171,17 @@ class RunningViewModel @Inject constructor(
                 duration = currentState.durationMillis,
                 distance = currentState.distanceMeters
             )
-            setState { copy(isRunning = false, isRunActive = false, pathPoints = emptyList(), durationMillis = 0L, distanceMeters = 0f) }
+            setState { 
+                copy(
+                    isRunning = false, 
+                    isRunActive = false, 
+                    pathPoints = emptyList(), 
+                    durationMillis = 0L, 
+                    distanceMeters = 0f, 
+                    currentSpeedKmh = 0f, 
+                    caloriesBurned = 0
+                ) 
+            }
             setEffect(RunningEffect.NavigateToSummary)
         }
     }
