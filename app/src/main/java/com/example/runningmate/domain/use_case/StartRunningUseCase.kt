@@ -3,7 +3,6 @@ package com.example.runningmate.domain.use_case
 import android.content.Context
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import com.example.runningmate.data.source.LocationDataSource
 import com.example.runningmate.data.worker.RunningWorker
@@ -18,8 +17,8 @@ class StartRunningUseCase @Inject constructor(
 ) {
     suspend operator fun invoke() {
         locationDataSource.clearPathPoints()
+        locationDataSource.startTracking()
         val workRequest = OneTimeWorkRequestBuilder<RunningWorker>()
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
             
         WorkManager.getInstance(context).enqueueUniqueWork(

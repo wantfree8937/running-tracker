@@ -103,7 +103,7 @@ class RunningViewModel @Inject constructor(
         
         viewModelScope.launch {
             startRunningUseCase()
-            setState { copy(isRunning = true) }
+            setState { copy(isRunning = true, isRunActive = true) }
         }
     }
 
@@ -125,7 +125,7 @@ class RunningViewModel @Inject constructor(
                 duration = currentState.durationMillis,
                 distance = currentState.distanceMeters
             )
-            setState { copy(isRunning = false, pathPoints = emptyList(), durationMillis = 0L, distanceMeters = 0f) }
+            setState { copy(isRunning = false, isRunActive = false, pathPoints = emptyList(), durationMillis = 0L, distanceMeters = 0f) }
             setEffect(RunningEffect.NavigateToSummary)
         }
     }

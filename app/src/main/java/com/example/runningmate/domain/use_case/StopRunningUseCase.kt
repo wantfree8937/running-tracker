@@ -8,11 +8,15 @@ import com.example.runningmate.domain.model.RunningPath
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
+import com.example.runningmate.data.source.LocationDataSource
+
 class StopRunningUseCase @Inject constructor(
     private val repository: RunningRepository,
+    private val locationDataSource: LocationDataSource,
     @ApplicationContext private val context: Context
 ) {
     suspend operator fun invoke(path: List<com.google.android.gms.maps.model.LatLng>, duration: Long, distance: Float) {
+        locationDataSource.stopTracking()
         WorkManager.getInstance(context).cancelUniqueWork("RunningTracking")
         
         val entity = RunEntity(

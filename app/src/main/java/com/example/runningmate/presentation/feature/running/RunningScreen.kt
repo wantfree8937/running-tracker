@@ -59,6 +59,8 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 
+import android.os.Build
+
 @Composable
 fun RunningScreen(
     state: RunningState,
@@ -79,15 +81,19 @@ fun RunningScreen(
     }
 
     LaunchedEffect(Unit) {
-        val permissions = arrayOf(
+        val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        
         if (permissions.all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }) {
             hasLocationPermission = true
             onIntent(RunningIntent.PermissionGranted)
         } else {
-            permissionLauncher.launch(permissions)
+            permissionLauncher.launch(permissions.toTypedArray())
         }
     }
 
@@ -226,7 +232,7 @@ fun RunningScreen(
                     }
                 }
 
-                if (!state.isRunning && state.pathPoints.isNotEmpty()) {
+                if (!state.isRunning && state.isRunActive) {
                     FloatingActionButton(
                         onClick = { showFinishDialog = true },
                         containerColor = MaterialTheme.colorScheme.errorContainer,

@@ -31,8 +31,13 @@ class DefaultLocationDataSource @Inject constructor(
     private val _pathPointsFlow = MutableStateFlow<List<LatLng>>(emptyList())
     override val pathPointsFlow = _pathPointsFlow.asStateFlow()
 
+    private var isTracking = false
+
     override fun addPathPoint(latLng: LatLng) {
-        _pathPointsFlow.value = _pathPointsFlow.value + latLng
+        val lastPoint = _pathPointsFlow.value.lastOrNull()
+        if (lastPoint != latLng) {
+            _pathPointsFlow.value = _pathPointsFlow.value + latLng
+        }
     }
 
     override fun clearPathPoints() {
@@ -55,7 +60,9 @@ class DefaultLocationDataSource @Inject constructor(
                 result.locations.lastOrNull()?.let { location ->
                     android.util.Log.d("DefaultLocationDataSource", "Location received: ${location.latitude}, ${location.longitude}")
                     val latLng = LatLng(location.latitude, location.longitude)
-                    addPathPoint(latLng) // Add to list even in foreground
+                    if (isTracking) {
+                        addPathPoint(latLng)
+                    }
                     _locationFlow.tryEmit(latLng)
                     trySend(latLng)
                 }
@@ -82,10 +89,10 @@ class DefaultLocationDataSource @Inject constructor(
     }
 
     override suspend fun startTracking() {
-        // No-op if using flow based approach, handled by collection
+        isTracking = true
     }
 
     override suspend fun stopTracking() {
-        // No-op
+        isTracking = false
     }
 }
