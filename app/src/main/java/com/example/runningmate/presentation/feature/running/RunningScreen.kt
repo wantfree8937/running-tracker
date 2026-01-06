@@ -113,21 +113,23 @@ fun RunningScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         val cameraPositionState = rememberCameraPositionState()
 
-        // Auto-center logic: Focus on user location when it updates
+        // Auto-center logic
         LaunchedEffect(state.currentLocation) {
             state.currentLocation?.let { loc ->
                 cameraPositionState.animate(
                     CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.fromLatLngZoom(loc, 18f) // Zoom level 18 (High zoom)
+                        CameraPosition.fromLatLngZoom(loc, 17f)
                     )
                 )
             }
         }
 
+        // 1. Full Screen Map
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
-            properties = MapProperties(isMyLocationEnabled = hasLocationPermission)
+            properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
+            uiSettings = com.google.maps.android.compose.MapUiSettings(zoomControlsEnabled = false) // Hide default zoom controls for cleaner look
         ) {
             state.currentLocation?.let {
                 Marker(
@@ -139,134 +141,184 @@ fun RunningScreen(
             if (state.pathPoints.isNotEmpty()) {
                 Polyline(
                     points = state.pathPoints,
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.primary, // Use primary color for path
                     width = 20f
                 )
             }
         }
 
-        // Top Stats Overlay
-        Column(
+        // 2. Bottom Stats & Controls Sheet
+        // Using a Surface to simulate a bottom sheet overlaid on the map
+        Surface(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(16.dp)
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 16.dp
         ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                shadowElevation = 4.dp
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .navigationBarsPadding(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
+                // Drag Handle (Visual cue only)
+                Box(
                     modifier = Modifier
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                        .width(40.dp)
+                        .height(4.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            shape = RoundedCornerShape(2.dp)
+                        )
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // --- Primary Stat: Distance ---
+                Text(
+                    text = "DISTANCE",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = "%.2f".format(state.distanceMeters / 1000f),
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 80.sp // Really big
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "KILOMETERS",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+
+                // --- Secondary Stats Row: Duration & Pace ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
+                    // Duration
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "TIME",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Text(
                             text = formatDuration(state.durationMillis),
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                    }
+
+                    // Pace (Calculated)
+                    // Speed is km/h. Pace is min/km = 60 / speed.
+                    val paceText = if (state.currentSpeedKmh > 0.1f) {
+                        val pace = 60 / state.currentSpeedKmh
+                        val pMin = pace.toInt()
+                        val pSec = ((pace - pMin) * 60).toInt()
+                        "%d'%02d\"".format(pMin, pSec)
+                    } else {
+                        "-'--\""
+                    }
+                    
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Duration",
+                            text = "PACE",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                    Spacer(modifier = Modifier.width(32.dp))
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "%.2f".format(state.distanceMeters / 1000f),
+                            text = paceText,
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Text(
-                            text = "Kilometers",
+                    }
+                    
+                    // Calories (Placeholder/Future proof)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                         Text(
+                            text = "KCAL",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Text(
+                            text = state.caloriesBurned.toString(),
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
-            }
-        }
 
-        // Bottom Controls Overlay
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (state.isRunning) {
-                     FloatingActionButton(
-                        onClick = { onIntent(RunningIntent.PauseRunning) },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.size(72.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Pause,
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // --- Controls ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (state.isRunning) {
+                        // PAUSE Button
+                        BigControlButton(
+                            onClick = { onIntent(RunningIntent.PauseRunning) },
+                            icon = Icons.Default.Pause,
                             contentDescription = "Pause",
-                            modifier = Modifier.size(32.dp)
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            iconColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
-                    }
-                } else {
-                     FloatingActionButton(
-                        onClick = { onIntent(RunningIntent.StartRunning) },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(72.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
+                    } else {
+                         // RESUME / START Button
+                         BigControlButton(
+                            onClick = { onIntent(RunningIntent.StartRunning) },
+                            icon = Icons.Default.PlayArrow,
                             contentDescription = "Start",
-                            modifier = Modifier.size(32.dp)
+                            color = MaterialTheme.colorScheme.primary,
+                            iconColor = MaterialTheme.colorScheme.onPrimary
                         )
                     }
-                }
 
-                if (!state.isRunning && state.isRunActive) {
-                    FloatingActionButton(
-                        onClick = { showFinishDialog = true },
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        modifier = Modifier.size(64.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Stop,
-                            contentDescription = "Finish",
-                            modifier = Modifier.size(28.dp)
+                    // STOP Button (Only if active)
+                    if (state.isRunActive && !state.isRunning) {
+                        Spacer(modifier = Modifier.width(32.dp))
+                        BigControlButton(
+                            onClick = { showFinishDialog = true },
+                            icon = Icons.Default.Stop,
+                            contentDescription = "Stop",
+                            color = MaterialTheme.colorScheme.error,
+                            iconColor = MaterialTheme.colorScheme.onError,
+                            size = 64.dp // Slightly smaller
                         )
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
 
-        // Finish Dialog
+        // Finish Dialog (Kept simple for now)
         if (showFinishDialog) {
             AlertDialog(
                 onDismissRequest = { showFinishDialog = false },
-                title = { Text("Workout Finished") },
-                text = {
-                    Column {
-                        Text("Great job!")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Duration: ${formatDuration(state.durationMillis)}")
-                        Text("Distance: %.2f km".format(state.distanceMeters / 1000f))
-                    }
-                },
+                title = { Text("Finish Run?") },
+                text = { Text("Are you sure you want to end this workout?") },
                 confirmButton = {
-                    Button(onClick = {
-                        showFinishDialog = false
-                        onIntent(RunningIntent.StopRunning)
-                    }) {
-                        Text("Save & Close")
+                    Button(
+                        onClick = {
+                            showFinishDialog = false
+                            onIntent(RunningIntent.StopRunning)
+                        },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Finish")
                     }
                 },
                 dismissButton = {
@@ -284,4 +336,31 @@ fun formatDuration(millis: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
+}
+
+@Composable
+fun BigControlButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    color: Color,
+    iconColor: Color,
+    size: androidx.compose.ui.unit.Dp = 96.dp
+) {
+    Surface(
+        onClick = onClick,
+        shape = androidx.compose.foundation.shape.CircleShape,
+        color = color,
+        contentColor = iconColor,
+        modifier = Modifier.size(size),
+        shadowElevation = 8.dp
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(size / 2.5f)
+            )
+        }
+    }
 }
