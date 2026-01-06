@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 // [Location]: domain/repository/RunningRepository.kt
 interface RunningRepository {
     suspend fun insertRun(run: RunEntity)
+    suspend fun deleteRun(run: RunEntity)
     fun getAllRuns(): Flow<List<RunEntity>>
     fun getTotalTimeInMillis(): Flow<Long>
     fun getTotalCaloriesBurned(): Flow<Int>

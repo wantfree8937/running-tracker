@@ -5,6 +5,8 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.example.runningmate.presentation.feature.running.RunningRoute
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -22,13 +24,20 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun RunningAppContent() {
-    // Simple Navigation Host placeholder
-    // For now, just show RunningRoute directly as per MVP
-    RunningRoute(
-        onNavigateToSummary = { /* Navigate to summary */ },
-        onShowMessage = { message -> 
-             // Toast handling needs context or should be done in Activity via SideEffect, 
-             // but Route passing generic lambda is fine.
+    var currentScreen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("Running") }
+
+    when (currentScreen) {
+        "Running" -> {
+            RunningRoute(
+                onNavigateToSummary = { /* Already handled by effect usually, but here we can keep as is */ },
+                onNavigateToHistory = { currentScreen = "History" },
+                onShowMessage = { }
+            )
         }
-    )
+        "History" -> {
+            com.example.runningmate.presentation.feature.history.RunHistoryScreen(
+                onNavigateUp = { currentScreen = "Running" }
+            )
+        }
+    }
 }

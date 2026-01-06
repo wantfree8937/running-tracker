@@ -15,6 +15,10 @@ class RunningRepositoryImpl @Inject constructor(
         runningDao.insertRun(run)
     }
 
+    override suspend fun deleteRun(run: RunEntity) {
+        runningDao.deleteRun(run)
+    }
+
     override fun getAllRuns(): Flow<List<RunEntity>> {
         return runningDao.getAllRuns()
     }

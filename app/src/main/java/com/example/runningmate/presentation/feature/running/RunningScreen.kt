@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
@@ -64,8 +65,10 @@ import android.os.Build
 @Composable
 fun RunningScreen(
     state: RunningState,
-    onIntent: (RunningIntent) -> Unit
+    onIntent: (RunningIntent) -> Unit,
+    onNavigateToHistory: () -> Unit
 ) {
+
     var showFinishDialog by remember { mutableStateOf(false) }
     var hasLocationPermission by remember { mutableStateOf(false) }
 
@@ -146,6 +149,25 @@ fun RunningScreen(
                         color = MaterialTheme.colorScheme.primary, // Use primary color for path
                         width = 20f
                     )
+                }
+            }
+        }
+
+
+        // History Button (Top End)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 48.dp, end = 24.dp), 
+            contentAlignment = Alignment.TopEnd
+        ) {
+            if (!state.isRunActive) {
+                androidx.compose.material3.SmallFloatingActionButton(
+                    onClick = onNavigateToHistory,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Icon(imageVector = Icons.Default.History, contentDescription = "History")
                 }
             }
         }

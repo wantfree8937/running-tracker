@@ -13,6 +13,9 @@ interface RunningDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRun(run: RunEntity)
 
+    @androidx.room.Delete
+    suspend fun deleteRun(run: RunEntity)
+
     @Query("SELECT * FROM running_table ORDER BY timestamp DESC")
     fun getAllRuns(): Flow<List<RunEntity>>
 

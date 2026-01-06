@@ -13,6 +13,7 @@ import com.example.runningmate.presentation.feature.running.contract.RunningInte
 fun RunningRoute(
     viewModel: RunningViewModel = hiltViewModel(),
     onNavigateToSummary: () -> Unit,
+    onNavigateToHistory: () -> Unit,
     onShowMessage: (String) -> Unit
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
@@ -28,6 +29,7 @@ fun RunningRoute(
 
     RunningScreen(
         state = uiState,
-        onIntent = viewModel::sendIntent
+        onIntent = viewModel::sendIntent,
+        onNavigateToHistory = onNavigateToHistory
     )
 }
