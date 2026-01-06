@@ -24,27 +24,39 @@ class RunEntityConverters {
     }
 
     @TypeConverter
-    fun toLatLngList(value: String): List<LatLng> {
+    fun toLatLngList(value: String): List<List<LatLng>> {
         if (value.isBlank()) return emptyList()
-        val list = mutableListOf<LatLng>()
-        val pairs = value.split(";")
-        for (pair in pairs) {
-            val coords = pair.split(",")
-            if (coords.size == 2) {
-                try {
-                    val lat = coords[0].toDouble()
-                    val lng = coords[1].toDouble()
-                    list.add(LatLng(lat, lng))
-                } catch (e: Exception) {
-                    // Ignore malformed
-                }
-            }
+        val segments = mutableListOf<List<LatLng>>()
+        val segmentStrings = value.split("|")
+        
+        for (segmentString in segmentStrings) {
+             val list = mutableListOf<LatLng>()
+             if (segmentString.isNotBlank()) {
+                 val pairs = segmentString.split(";")
+                 for (pair in pairs) {
+                    val coords = pair.split(",")
+                    if (coords.size == 2) {
+                        try {
+                            val lat = coords[0].toDouble()
+                            val lng = coords[1].toDouble()
+                            list.add(LatLng(lat, lng))
+                        } catch (e: Exception) {
+                            // Ignore malformed
+                        }
+                    }
+                 }
+             }
+             if (list.isNotEmpty()) {
+                 segments.add(list)
+             }
         }
-        return list
+        return segments
     }
 
     @TypeConverter
-    fun fromLatLngList(list: List<LatLng>): String {
-        return list.joinToString(";") { "${it.latitude},${it.longitude}" }
+    fun fromLatLngList(list: List<List<LatLng>>): String {
+        return list.joinToString("|") { segment ->
+            segment.joinToString(";") { "${it.latitude},${it.longitude}" }
+        }
     }
 }

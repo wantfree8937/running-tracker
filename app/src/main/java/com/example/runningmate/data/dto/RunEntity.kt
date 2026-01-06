@@ -14,5 +14,5 @@ data class RunEntity(
     val distanceMeters: Int = 0,
     val timeInMillis: Long = 0L,
     val caloriesBurned: Int = 0,
-    val pathPoints: List<LatLng> = emptyList() // Needs TypeConverter
+    val pathPoints: List<List<LatLng>> = emptyList() // Needs TypeConverter
 )

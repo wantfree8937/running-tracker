@@ -11,7 +11,7 @@ import com.google.android.gms.maps.model.LatLng
 data class RunningState(
     val isRunning: Boolean = false,
     val isRunActive: Boolean = false,
-    val pathPoints: List<LatLng> = emptyList(),
+    val pathPoints: List<List<LatLng>> = emptyList(),
     val durationMillis: Long = 0L,
     val distanceMeters: Float = 0f,
     val currentSpeedKmh: Float = 0f,

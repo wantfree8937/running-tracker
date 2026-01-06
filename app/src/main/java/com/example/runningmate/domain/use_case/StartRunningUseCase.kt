@@ -15,8 +15,10 @@ class StartRunningUseCase @Inject constructor(
     private val locationDataSource: LocationDataSource,
     @ApplicationContext private val context: Context
 ) {
-    suspend operator fun invoke() {
-        locationDataSource.clearPathPoints()
+    suspend operator fun invoke(clearData: Boolean = true) {
+        if (clearData) {
+            locationDataSource.clearPathPoints()
+        }
         locationDataSource.startTracking()
         val workRequest = OneTimeWorkRequestBuilder<RunningWorker>()
             .build()

@@ -15,7 +15,7 @@ class StopRunningUseCase @Inject constructor(
     private val locationDataSource: LocationDataSource,
     @ApplicationContext private val context: Context
 ) {
-    suspend operator fun invoke(path: List<com.google.android.gms.maps.model.LatLng>, duration: Long, distance: Float) {
+    suspend operator fun invoke(path: List<List<com.google.android.gms.maps.model.LatLng>>, duration: Long, distance: Float) {
         locationDataSource.stopTracking()
         WorkManager.getInstance(context).cancelUniqueWork("RunningTracking")
         

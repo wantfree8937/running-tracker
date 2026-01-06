@@ -57,16 +57,18 @@ class RunningViewModel @Inject constructor(
         
         sharedLocationJob = viewModelScope.launch {
             // Collect the entire path list regardless of isRunning state
-            observeLocationUseCase.pathPointsFlow.collect { path ->
-                if (path.isNotEmpty()) {
-                    val currentDistance = calculateTotalDistance(path)
+            observeLocationUseCase.pathPointsFlow.collect { paths -> // paths is List<List<LatLng>>
+                if (paths.isNotEmpty()) {
+                    val currentDistance = calculateTotalDistance(paths)
                     val newSpeed = calculateCurrentSpeed(currentDistance)
                     val newCalories = calculateCalories(currentDistance)
                     
+                    val lastPoint = paths.lastOrNull()?.lastOrNull()
+                    
                     setState { 
                         copy(
-                            pathPoints = path,
-                            currentLocation = path.lastOrNull() ?: currentLocation,
+                            pathPoints = paths,
+                            currentLocation = lastPoint ?: currentLocation,
                             distanceMeters = currentDistance,
                             currentSpeedKmh = newSpeed,
                             caloriesBurned = newCalories
@@ -77,10 +79,12 @@ class RunningViewModel @Inject constructor(
         }
     }
 
-    private fun calculateTotalDistance(path: List<LatLng>): Float {
+    private fun calculateTotalDistance(paths: List<List<LatLng>>): Float {
         var total = 0f
-        for (i in 0 until path.size - 1) {
-            total += calculateDistance(path[i], path[i + 1])
+        for (segment in paths) {
+            for (i in 0 until segment.size - 1) {
+                total += calculateDistance(segment[i], segment[i + 1])
+            }
         }
         return total
     }
@@ -148,7 +152,9 @@ class RunningViewModel @Inject constructor(
         }
         
         viewModelScope.launch {
-            startRunningUseCase()
+            // If run is already active (paused), do not clear data. Only clear on fresh start.
+            val clearData = !currentState.isRunActive
+            startRunningUseCase(clearData = clearData)
             setState { copy(isRunning = true, isRunActive = true) }
         }
     }
@@ -175,7 +181,7 @@ class RunningViewModel @Inject constructor(
                 copy(
                     isRunning = false, 
                     isRunActive = false, 
-                    pathPoints = emptyList(), 
+                    pathPoints = emptyList(), // Inference should match List<List<LatLng>> 
                     durationMillis = 0L, 
                     distanceMeters = 0f, 
                     currentSpeedKmh = 0f, 

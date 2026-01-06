@@ -28,15 +28,19 @@ class DefaultLocationDataSource @Inject constructor(
     private val _locationFlow = MutableSharedFlow<LatLng>(extraBufferCapacity = 1)
     override val locationFlow = _locationFlow.asSharedFlow()
 
-    private val _pathPointsFlow = MutableStateFlow<List<LatLng>>(emptyList())
+    private val _pathPointsFlow = MutableStateFlow<List<List<LatLng>>>(emptyList())
     override val pathPointsFlow = _pathPointsFlow.asStateFlow()
 
     private var isTracking = false
 
     override fun addPathPoint(latLng: LatLng) {
-        val lastPoint = _pathPointsFlow.value.lastOrNull()
-        if (lastPoint != latLng) {
-            _pathPointsFlow.value = _pathPointsFlow.value + latLng
+        val currentPaths = _pathPointsFlow.value
+        if (currentPaths.isEmpty()) {
+            _pathPointsFlow.value = listOf(listOf(latLng))
+        } else {
+            val lastSegment = currentPaths.last()
+            val newSegment = lastSegment + latLng
+            _pathPointsFlow.value = currentPaths.dropLast(1) + listOf(newSegment)
         }
     }
 
@@ -90,6 +94,8 @@ class DefaultLocationDataSource @Inject constructor(
 
     override suspend fun startTracking() {
         isTracking = true
+        // Add a new empty segment when tracking starts/resumes
+        _pathPointsFlow.value = _pathPointsFlow.value + listOf(emptyList())
     }
 
     override suspend fun stopTracking() {

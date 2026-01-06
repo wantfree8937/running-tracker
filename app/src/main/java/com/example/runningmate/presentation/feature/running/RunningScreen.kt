@@ -129,7 +129,8 @@ fun RunningScreen(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
-            uiSettings = com.google.maps.android.compose.MapUiSettings(zoomControlsEnabled = false) // Hide default zoom controls for cleaner look
+            uiSettings = com.google.maps.android.compose.MapUiSettings(zoomControlsEnabled = false), // Hide default zoom controls for cleaner look
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 350.dp) // Shift focus up
         ) {
             state.currentLocation?.let {
                 Marker(
@@ -138,12 +139,14 @@ fun RunningScreen(
                 )
             }
 
-            if (state.pathPoints.isNotEmpty()) {
-                Polyline(
-                    points = state.pathPoints,
-                    color = MaterialTheme.colorScheme.primary, // Use primary color for path
-                    width = 20f
-                )
+            state.pathPoints.forEach { segment ->
+                if (segment.isNotEmpty()) {
+                    Polyline(
+                        points = segment,
+                        color = MaterialTheme.colorScheme.primary, // Use primary color for path
+                        width = 20f
+                    )
+                }
             }
         }
 
@@ -218,25 +221,17 @@ fun RunningScreen(
                         )
                     }
 
-                    // Pace (Calculated)
-                    // Speed is km/h. Pace is min/km = 60 / speed.
-                    val paceText = if (state.currentSpeedKmh > 0.1f) {
-                        val pace = 60 / state.currentSpeedKmh
-                        val pMin = pace.toInt()
-                        val pSec = ((pace - pMin) * 60).toInt()
-                        "%d'%02d\"".format(pMin, pSec)
-                    } else {
-                        "-'--\""
-                    }
+                    // Speed (Replaced Pace)
+                    val speedText = "%.1f km/h".format(state.currentSpeedKmh)
                     
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "PACE",
+                            text = "SPEED",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = paceText,
+                            text = speedText,
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), // Reduced style
                             color = MaterialTheme.colorScheme.onSurface
                         )

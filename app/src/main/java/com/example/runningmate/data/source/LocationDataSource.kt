@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface LocationDataSource {
     val locationFlow: Flow<LatLng>
-    val pathPointsFlow: StateFlow<List<LatLng>>
+    val pathPointsFlow: StateFlow<List<List<LatLng>>>
     
     fun addPathPoint(latLng: LatLng)
     fun clearPathPoints()
