@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +34,9 @@ fun RunHistoryScreen(
     viewModel: RunHistoryViewModel = hiltViewModel()
 ) {
     val runs by viewModel.runs.collectAsState()
+
+    var showDeleteDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var runToDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<RunEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -75,11 +79,40 @@ fun RunHistoryScreen(
                 items(runs, key = { it.id }) { run ->
                     RunItem(
                         run = run,
-                        onDeleteClick = { viewModel.deleteRun(run) }
+                        onDeleteClick = { 
+                            runToDelete = run
+                            showDeleteDialog = true
+                        }
                     )
                 }
             }
         }
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteDialog && runToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Run?") },
+            text = { Text("Are you sure you want to delete this run record? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        runToDelete?.let { viewModel.deleteRun(it) }
+                        showDeleteDialog = false
+                        runToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

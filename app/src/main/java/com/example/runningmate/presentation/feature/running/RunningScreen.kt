@@ -26,6 +26,11 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
@@ -116,14 +121,18 @@ fun RunningScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         val cameraPositionState = rememberCameraPositionState()
 
-        // Auto-center logic
+        // Auto-center logic (One-time only)
+        var isInitialFocus by remember { mutableStateOf(true) }
         LaunchedEffect(state.currentLocation) {
-            state.currentLocation?.let { loc ->
-                cameraPositionState.animate(
-                    CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.fromLatLngZoom(loc, 17f)
+            if (isInitialFocus && state.currentLocation != null) {
+                state.currentLocation?.let { loc ->
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newCameraPosition(
+                            CameraPosition.fromLatLngZoom(loc, 17f)
+                        )
                     )
-                )
+                    isInitialFocus = false
+                }
             }
         }
 
@@ -132,7 +141,10 @@ fun RunningScreen(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
-            uiSettings = com.google.maps.android.compose.MapUiSettings(zoomControlsEnabled = false), // Hide default zoom controls for cleaner look
+            uiSettings = com.google.maps.android.compose.MapUiSettings(
+                zoomControlsEnabled = false,
+                myLocationButtonEnabled = false
+            ), // Hide default buttons for cleaner look
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 350.dp) // Shift focus up
         ) {
             state.currentLocation?.let {
@@ -154,25 +166,64 @@ fun RunningScreen(
         }
 
 
-        // History Button (Top End)
-        Box(
+
+
+
+        // Map Controls (Zoom In/Out, My Location)
+        val scope = rememberCoroutineScope()
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 48.dp, end = 24.dp), 
-            contentAlignment = Alignment.TopEnd
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 400.dp, end = 16.dp) // Adjusted to be clearly above bottom sheet
         ) {
-            if (!state.isRunActive) {
-                androidx.compose.material3.SmallFloatingActionButton(
-                    onClick = onNavigateToHistory,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Icon(imageVector = Icons.Default.History, contentDescription = "History")
-                }
+            // Zoom In
+            androidx.compose.material3.SmallFloatingActionButton(
+                onClick = {
+                    scope.launch {
+                        cameraPositionState.animate(CameraUpdateFactory.zoomIn())
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Zoom In")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Zoom Out
+            androidx.compose.material3.SmallFloatingActionButton(
+                onClick = {
+                    scope.launch {
+                        cameraPositionState.animate(CameraUpdateFactory.zoomOut())
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                Icon(Icons.Default.Remove, contentDescription = "Zoom Out")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // My Location
+            androidx.compose.material3.SmallFloatingActionButton(
+                onClick = {
+                    state.currentLocation?.let { loc ->
+                        scope.launch {
+                            cameraPositionState.animate(
+                                CameraUpdateFactory.newCameraPosition(
+                                    CameraPosition.fromLatLngZoom(loc, 17f)
+                                )
+                            )
+                        }
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                Icon(Icons.Default.MyLocation, contentDescription = "My Location")
             }
         }
 
-        // 2. Bottom Stats & Controls Sheet
         // Using a Surface to simulate a bottom sheet overlaid on the map
         Surface(
             modifier = Modifier
@@ -188,16 +239,38 @@ fun RunningScreen(
                     .navigationBarsPadding(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Drag Handle (Visual cue only)
+                // Header Row: Drag Handle + History Button
                 Box(
                     modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            shape = RoundedCornerShape(2.dp)
-                        )
-                )
+                        .fillMaxWidth()
+                        .height(48.dp) // Fixed height to prevent jumping when History button disappears
+                ) {
+                    // Drag Handle (Centered)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .width(40.dp)
+                            .height(4.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(2.dp)
+                            )
+                    )
+
+                    // History Button (End) - Only visible when not active
+                    if (!state.isRunActive) {
+                        androidx.compose.material3.IconButton(
+                            onClick = onNavigateToHistory,
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = "History",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(16.dp)) // Reduced spacer
 
@@ -210,19 +283,14 @@ fun RunningScreen(
                     letterSpacing = 1.sp
                 )
                 Text(
-                    text = "%.2f".format(state.distanceMeters / 1000f),
+                    text = "%.2f km".format(state.distanceMeters / 1000f),
                     style = MaterialTheme.typography.displayLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 64.sp // Reduced from 80.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "KILOMETERS",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp) // Reduced padding
-                )
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // --- Secondary Stats Row: Duration & Pace ---
                 Row(
