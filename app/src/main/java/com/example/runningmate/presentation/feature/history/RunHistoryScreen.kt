@@ -155,11 +155,6 @@ fun RunItem(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text(
-                        text = "%.1f km/h".format(run.avgSpeedKmh),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
                 }
             }
 

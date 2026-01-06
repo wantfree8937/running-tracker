@@ -15,7 +15,7 @@ class StopRunningUseCase @Inject constructor(
     private val locationDataSource: LocationDataSource,
     @ApplicationContext private val context: Context
 ) {
-    suspend operator fun invoke(path: List<List<com.google.android.gms.maps.model.LatLng>>, duration: Long, distance: Float) {
+    suspend operator fun invoke(path: List<List<com.google.android.gms.maps.model.LatLng>>, duration: Long, distance: Float, calories: Int) {
         locationDataSource.stopTracking()
         WorkManager.getInstance(context).cancelUniqueWork("RunningTracking")
         
@@ -24,7 +24,8 @@ class StopRunningUseCase @Inject constructor(
             timeInMillis = duration,
             distanceMeters = distance.toInt(),
             pathPoints = path,
-            avgSpeedKmh = if (duration > 0) (distance / 1000f) / (duration / 3600000f) else 0f
+            avgSpeedKmh = if (duration > 0) (distance / 1000f) / (duration / 3600000f) else 0f,
+            caloriesBurned = calories
         )
         repository.insertRun(entity)
     }

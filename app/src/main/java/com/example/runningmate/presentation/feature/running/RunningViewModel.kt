@@ -175,7 +175,8 @@ class RunningViewModel @Inject constructor(
             stopRunningUseCase(
                 path = currentState.pathPoints,
                 duration = currentState.durationMillis,
-                distance = currentState.distanceMeters
+                distance = currentState.distanceMeters,
+                calories = currentState.caloriesBurned
             )
             setState { 
                 copy(
