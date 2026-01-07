@@ -101,4 +101,11 @@ class DefaultLocationDataSource @Inject constructor(
     override suspend fun stopTracking() {
         isTracking = false
     }
+
+    override fun restoreState(pathPoints: List<List<LatLng>>) {
+        _pathPointsFlow.value = pathPoints
+        if (pathPoints.isNotEmpty() && pathPoints.last().isNotEmpty()) {
+            _locationFlow.tryEmit(pathPoints.last().last())
+        }
+    }
 }

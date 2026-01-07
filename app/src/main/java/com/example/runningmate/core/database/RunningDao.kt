@@ -30,4 +30,14 @@ interface RunningDao {
 
     @Query("SELECT AVG(avgSpeedKmh) FROM running_table")
     fun getTotalAvgSpeed(): Flow<Float>
+
+    // Current Run Persistence
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCurrentRun(run: CurrentRunEntity)
+
+    @Query("DELETE FROM current_run_table")
+    suspend fun deleteCurrentRun()
+
+    @Query("SELECT * FROM current_run_table LIMIT 1")
+    suspend fun getCurrentRun(): CurrentRunEntity?
 }

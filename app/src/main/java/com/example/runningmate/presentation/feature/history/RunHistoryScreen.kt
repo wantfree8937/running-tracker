@@ -30,13 +30,15 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RunHistoryScreen(
+    runs: List<RunEntity>,
+    onRunDeleteClick: (RunEntity) -> Unit,
     onNavigateUp: () -> Unit,
-    viewModel: RunHistoryViewModel = hiltViewModel()
+    showDeleteDialog: Boolean,
+    onDismissDeleteDialog: () -> Unit,
+    onConfirmDelete: () -> Unit
 ) {
-    val runs by viewModel.runs.collectAsState()
-
-    var showDeleteDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var runToDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<RunEntity?>(null) }
+    // ViewModel removed, state passed as argument
+    // State collection moved to Root
 
     Scaffold(
         topBar = {
@@ -79,10 +81,7 @@ fun RunHistoryScreen(
                 items(runs, key = { it.id }) { run ->
                     RunItem(
                         run = run,
-                        onDeleteClick = { 
-                            runToDelete = run
-                            showDeleteDialog = true
-                        }
+                        onDeleteClick = { onRunDeleteClick(run) }
                     )
                 }
             }
@@ -90,25 +89,21 @@ fun RunHistoryScreen(
     }
 
     // Delete Confirmation Dialog
-    if (showDeleteDialog && runToDelete != null) {
+    if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = onDismissDeleteDialog,
             title = { Text("Delete Run?") },
             text = { Text("Are you sure you want to delete this run record? This action cannot be undone.") },
             confirmButton = {
                 TextButton(
-                    onClick = {
-                        runToDelete?.let { viewModel.deleteRun(it) }
-                        showDeleteDialog = false
-                        runToDelete = null
-                    },
+                    onClick = onConfirmDelete,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text("Delete")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(onClick = onDismissDeleteDialog) {
                     Text("Cancel")
                 }
             }

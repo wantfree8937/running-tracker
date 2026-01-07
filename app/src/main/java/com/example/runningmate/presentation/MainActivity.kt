@@ -7,7 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import com.example.runningmate.presentation.feature.running.RunningRoute
+import androidx.compose.runtime.setValue
 import dagger.hilt.android.AndroidEntryPoint
 
 // [Location]: presentation/MainActivity.kt
@@ -28,14 +28,14 @@ fun RunningAppContent() {
 
     when (currentScreen) {
         "Running" -> {
-            RunningRoute(
+            com.example.runningmate.presentation.feature.running.RunningRoot(
                 onNavigateToSummary = { /* Already handled by effect usually, but here we can keep as is */ },
                 onNavigateToHistory = { currentScreen = "History" },
                 onShowMessage = { }
             )
         }
         "History" -> {
-            com.example.runningmate.presentation.feature.history.RunHistoryScreen(
+            com.example.runningmate.presentation.feature.history.RunHistoryRoot(
                 onNavigateUp = { currentScreen = "Running" }
             )
         }

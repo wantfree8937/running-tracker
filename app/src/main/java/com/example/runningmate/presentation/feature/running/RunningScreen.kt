@@ -71,39 +71,15 @@ import android.os.Build
 fun RunningScreen(
     state: RunningState,
     onIntent: (RunningIntent) -> Unit,
-    onNavigateToHistory: () -> Unit
+    onNavigateToHistory: () -> Unit,
+    showFinishDialog: Boolean,
+    onShowFinishDialog: () -> Unit,
+    onDismissFinishDialog: () -> Unit,
+    hasLocationPermission: Boolean
 ) {
+    // Permission Handling and Dialog State moved to Root
 
-    var showFinishDialog by remember { mutableStateOf(false) }
-    var hasLocationPermission by remember { mutableStateOf(false) }
-
-    // Permission Handling
     val context = LocalContext.current
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        if (results.values.all { it }) {
-            hasLocationPermission = true
-            onIntent(RunningIntent.PermissionGranted)
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        val permissions = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        
-        if (permissions.all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }) {
-            hasLocationPermission = true
-            onIntent(RunningIntent.PermissionGranted)
-        } else {
-            permissionLauncher.launch(permissions.toTypedArray())
-        }
-    }
 
     // WakeLock / Screen On Logic
     DisposableEffect(state.isRunning) {
@@ -372,11 +348,11 @@ fun RunningScreen(
                         )
                     }
 
-                    // STOP Button (Only if active)
+                                    // STOP Button (Only if active)
                     if (state.isRunActive && !state.isRunning) {
                         Spacer(modifier = Modifier.width(24.dp))
                         BigControlButton(
-                            onClick = { showFinishDialog = true },
+                            onClick = onShowFinishDialog,
                             icon = Icons.Default.Stop,
                             contentDescription = "Stop",
                             color = MaterialTheme.colorScheme.error,
@@ -392,13 +368,13 @@ fun RunningScreen(
         // Finish Dialog (Kept simple for now)
         if (showFinishDialog) {
             AlertDialog(
-                onDismissRequest = { showFinishDialog = false },
+                onDismissRequest = onDismissFinishDialog,
                 title = { Text("Finish Run?") },
                 text = { Text("Are you sure you want to end this workout?") },
                 confirmButton = {
                     Button(
                         onClick = {
-                            showFinishDialog = false
+                            onDismissFinishDialog()
                             onIntent(RunningIntent.StopRunning)
                         },
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
@@ -409,7 +385,7 @@ fun RunningScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showFinishDialog = false }) {
+                    TextButton(onClick = onDismissFinishDialog) {
                         Text("Resume")
                     }
                 }

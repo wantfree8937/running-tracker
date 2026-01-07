@@ -17,4 +17,5 @@ interface LocationDataSource {
     suspend fun emitLocation(latLng: LatLng)
     suspend fun startTracking()
     suspend fun stopTracking()
+    fun restoreState(pathPoints: List<List<LatLng>>)
 }

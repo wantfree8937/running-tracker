@@ -39,6 +39,11 @@
         </activity>
 
         <service
+            android:name=".data.service.RunningService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+
+        <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="location"
             tools:node="merge" />

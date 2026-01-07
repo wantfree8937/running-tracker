@@ -1,11 +1,9 @@
 package com.example.runningmate.domain.use_case
 
 import android.content.Context
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
+import android.content.Intent
+import com.example.runningmate.data.service.RunningService
 import com.example.runningmate.data.source.LocationDataSource
-import com.example.runningmate.data.worker.RunningWorker
 import com.example.runningmate.domain.repository.RunningRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -19,14 +17,15 @@ class StartRunningUseCase @Inject constructor(
         if (clearData) {
             locationDataSource.clearPathPoints()
         }
-        locationDataSource.startTracking()
-        val workRequest = OneTimeWorkRequestBuilder<RunningWorker>()
-            .build()
-            
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            "RunningTracking",
-            ExistingWorkPolicy.REPLACE,
-            workRequest
-        )
+        // locationDataSource.startTracking() is called by Service
+        
+        val intent = Intent(context, RunningService::class.java).apply {
+            action = RunningService.ACTION_START
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
     }
 }

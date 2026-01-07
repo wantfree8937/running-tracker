@@ -16,14 +16,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// [Location]: presentation/feature/running/RunningViewModel.kt
-// [Location]: presentation/feature/running/RunningViewModel.kt
+import com.example.runningmate.domain.use_case.GetCurrentRunUseCase
+
 @HiltViewModel
 class RunningViewModel @Inject constructor(
     private val startRunningUseCase: StartRunningUseCase,
     private val pauseRunningUseCase: PauseRunningUseCase,
     private val stopRunningUseCase: StopRunningUseCase,
-    private val observeLocationUseCase: ObserveLocationUseCase
+    private val observeLocationUseCase: ObserveLocationUseCase,
+    private val getCurrentRunUseCase: GetCurrentRunUseCase
 ) : BaseViewModel<RunningState, RunningIntent, RunningEffect>(RunningState()) {
 
     private var timerJob: Job? = null
@@ -36,6 +37,36 @@ class RunningViewModel @Inject constructor(
 
     init {
         startObservingSharedLocation()
+        restoreRunState()
+    }
+
+    private fun restoreRunState() {
+        viewModelScope.launch {
+            val currentRun = getCurrentRunUseCase()
+            if (currentRun != null) {
+                // Restore state
+                val now = System.currentTimeMillis()
+                // Assuming continuous run for simpler logic, or we can trust duration from DB.
+                // If service was running, duration increases.
+                // We'll trust current state from DB but update duration to be relative to now if running?
+                // Actually, duplicate logic with Service restoration:
+                // Service restores, starts tracking -> DataSource has points.
+                // ViewModel sees points via `startObservingSharedLocation`.
+                // We just need to set `isRunning` and `duration` offset.
+                
+                val duration = System.currentTimeMillis() - currentRun.startTime
+                
+                setState { 
+                    copy(
+                        isRunning = true,
+                        isRunActive = true,
+                        durationMillis = duration,
+                        // pathPoints will be updated by flow
+                    ) 
+                }
+                startTimer() // Resume timer
+            }
+        }
     }
 
     override fun handleIntent(intent: RunningIntent) {
@@ -144,18 +175,23 @@ class RunningViewModel @Inject constructor(
         lastLocationTime = System.currentTimeMillis()
         lastDistanceForSpeed = currentState.distanceMeters
         
-        timerJob = viewModelScope.launch {
-            while (true) {
-                delay(1000L)
-                setState { copy(durationMillis = durationMillis + 1000L) }
-            }
-        }
+        startTimer()
         
         viewModelScope.launch {
             // If run is already active (paused), do not clear data. Only clear on fresh start.
             val clearData = !currentState.isRunActive
             startRunningUseCase(clearData = clearData)
             setState { copy(isRunning = true, isRunActive = true) }
+        }
+    }
+
+    private fun startTimer() {
+        if (timerJob?.isActive == true) return
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(1000L)
+                setState { copy(durationMillis = durationMillis + 1000L) }
+            }
         }
     }
 

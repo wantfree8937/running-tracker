@@ -1,14 +1,13 @@
 package com.example.runningmate.domain.use_case
 
 import android.content.Context
-import androidx.work.WorkManager
-import com.example.runningmate.domain.repository.RunningRepository
+import android.content.Intent
 import com.example.runningmate.data.dto.RunEntity
-import com.example.runningmate.domain.model.RunningPath
+import com.example.runningmate.data.service.RunningService
+import com.example.runningmate.data.source.LocationDataSource
+import com.example.runningmate.domain.repository.RunningRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
-
-import com.example.runningmate.data.source.LocationDataSource
 
 class StopRunningUseCase @Inject constructor(
     private val repository: RunningRepository,
@@ -16,9 +15,7 @@ class StopRunningUseCase @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     suspend operator fun invoke(path: List<List<com.google.android.gms.maps.model.LatLng>>, duration: Long, distance: Float, calories: Int) {
-        locationDataSource.stopTracking()
-        WorkManager.getInstance(context).cancelUniqueWork("RunningTracking")
-        
+        // Save the finished run
         val entity = RunEntity(
             timestamp = System.currentTimeMillis(),
             timeInMillis = duration,
@@ -28,5 +25,11 @@ class StopRunningUseCase @Inject constructor(
             caloriesBurned = calories
         )
         repository.insertRun(entity)
+
+        // Stop Service (which handles stopTracking and deleteCurrentRun)
+        val intent = Intent(context, RunningService::class.java).apply {
+            action = RunningService.ACTION_STOP
+        }
+        context.startService(intent)
     }
 }
