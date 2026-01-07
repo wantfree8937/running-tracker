@@ -5,6 +5,8 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import com.example.runningmate.data.dto.CurrentRunEntity
+import com.example.runningmate.data.dto.RunEntity
+import com.example.runningmate.data.dto.RunEntityConverters
 
 // [Location]: core/database/RunningDatabase.kt
 @Database(entities = [RunEntity::class, CurrentRunEntity::class], version = 3, exportSchema = false)

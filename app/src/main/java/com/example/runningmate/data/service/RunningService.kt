@@ -15,6 +15,7 @@ import com.example.runningmate.data.dto.CurrentRunEntity
 import com.example.runningmate.data.source.LocationDataSource
 import com.example.runningmate.domain.repository.RunningRepository
 import com.example.runningmate.presentation.MainActivity
+import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
