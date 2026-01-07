@@ -152,9 +152,21 @@ fun RunningScreen(
                     .padding(top = 80.dp) // Below potential status bar/top icons
                     .padding(horizontal = 24.dp)
             ) {
+                val backgroundColor = if (warning.isCritical) {
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.9f)
+                } else {
+                    Color(0xFFFFA000).copy(alpha = 0.9f) // Warning Orange
+                }
+                
+                val contentColor = if (warning.isCritical) {
+                    MaterialTheme.colorScheme.onError
+                } else {
+                    Color.White
+                }
+
                 Surface(
-                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.9f),
-                    contentColor = MaterialTheme.colorScheme.onError,
+                    color = backgroundColor,
+                    contentColor = contentColor,
                     shape = RoundedCornerShape(16.dp),
                     shadowElevation = 8.dp
                 ) {
@@ -165,7 +177,7 @@ fun RunningScreen(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = warning,
+                            text = warning.message,
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp // Slightly larger font

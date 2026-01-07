@@ -8,6 +8,11 @@ import com.google.android.gms.maps.model.LatLng
 
 // [Location]: presentation/feature/running/contract/RunningContract.kt
 
+data class BatteryWarning(
+    val message: String,
+    val isCritical: Boolean
+)
+
 data class RunningState(
     val isRunning: Boolean = false,
     val isRunActive: Boolean = false,
@@ -17,7 +22,7 @@ data class RunningState(
     val currentSpeedKmh: Float = 0f,
     val caloriesBurned: Int = 0,
     val currentLocation: LatLng? = null,
-    val batteryWarning: String? = null
+    val batteryWarning: BatteryWarning? = null
 ) : UiState
 
 sealed class RunningIntent : UiIntent {

@@ -97,9 +97,18 @@ class RunningViewModel @Inject constructor(
         // Initial Battery Check
         val batteryLevel = getBatteryLevelUseCase()
         android.util.Log.d("RunningViewModel", "startRunning: Initial Check - level=$batteryLevel")
+        
+        if (batteryLevel != -1 && batteryLevel <= 20) {
+            showBatteryWarning("배터리가 너무 낮아 운동을 시작할 수 없습니다 ($batteryLevel%)", isCritical = true)
+            if (currentState.isRunActive) {
+                stopRunning()
+            }
+            return
+        }
+
         if (batteryLevel != -1 && batteryLevel <= 30) {
             android.util.Log.d("RunningViewModel", "startRunning: Initial WARNING TRIGGERED")
-            showBatteryWarning("배터리가 부족합니다 ($batteryLevel%)")
+            showBatteryWarning("배터리가 부족합니다 ($batteryLevel%)", isCritical = false)
             hasShownBatteryWarning = true
         } else {
             android.util.Log.d("RunningViewModel", "startRunning: Initial Check OK or Unknown")
@@ -229,9 +238,18 @@ class RunningViewModel @Inject constructor(
         batteryJob = viewModelScope.launch {
             observeBatteryLevelUseCase().collect { level ->
                 android.util.Log.d("RunningViewModel", "Battery Flow Update: $level, isRunning=${currentState.isRunning}, hasShown=$hasShownBatteryWarning")
+                
+                if (level != -1 && level <= 20 && currentState.isRunActive) {
+                    // 20% 이하: 강제 종료 및 저장
+                    android.util.Log.d("RunningViewModel", "CRITICAL BATTERY: Auto-stopping run")
+                    showBatteryWarning("배터리가 너무 낮아 운동을 종료하고 기록을 저장합니다 ($level%)", isCritical = true)
+                    stopRunning()
+                    return@collect
+                }
+
                 if (currentState.isRunning && level != -1 && level <= 30 && !hasShownBatteryWarning) {
                     android.util.Log.d("RunningViewModel", "Battery Flow WARNING TRIGGERED")
-                    showBatteryWarning("배터리가 부족합니다 ($level%)")
+                    showBatteryWarning("배터리가 부족합니다 ($level%)", isCritical = false)
                     hasShownBatteryWarning = true
                 } else if (level > 30) {
                     setState { copy(batteryWarning = null) }
@@ -241,8 +259,8 @@ class RunningViewModel @Inject constructor(
         }
     }
 
-    private fun showBatteryWarning(message: String) {
-        setState { copy(batteryWarning = message) }
+    private fun showBatteryWarning(message: String, isCritical: Boolean) {
+        setState { copy(batteryWarning = com.example.runningmate.presentation.feature.running.contract.BatteryWarning(message, isCritical)) }
         batteryWarningTimeoutJob?.cancel()
         batteryWarningTimeoutJob = viewModelScope.launch {
             delay(5000L) // 5초 후 경고 숨김
