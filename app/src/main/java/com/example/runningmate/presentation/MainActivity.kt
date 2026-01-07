@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun RunningAppContent() {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var currentScreen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("Running") }
 
     when (currentScreen) {
@@ -31,7 +32,9 @@ fun RunningAppContent() {
             com.example.runningmate.presentation.feature.running.RunningRoot(
                 onNavigateToSummary = { /* Already handled by effect usually, but here we can keep as is */ },
                 onNavigateToHistory = { currentScreen = "History" },
-                onShowMessage = { }
+                onShowMessage = { message ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
             )
         }
         "History" -> {

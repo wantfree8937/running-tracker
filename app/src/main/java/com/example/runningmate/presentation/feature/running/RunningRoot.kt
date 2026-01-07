@@ -32,7 +32,10 @@ fun RunningRoot(
         viewModel.effect.collect { effect ->
             when (effect) {
                 is RunningEffect.NavigateToSummary -> onNavigateToSummary()
-                is RunningEffect.ShowToast -> onShowMessage(effect.message)
+                is RunningEffect.ShowToast -> {
+                    android.util.Log.d("RunningRoot", "ShowToast effect received: ${effect.message}")
+                    onShowMessage(effect.message)
+                }
             }
         }
     }

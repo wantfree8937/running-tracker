@@ -16,7 +16,8 @@ data class RunningState(
     val distanceMeters: Float = 0f,
     val currentSpeedKmh: Float = 0f,
     val caloriesBurned: Int = 0,
-    val currentLocation: LatLng? = null
+    val currentLocation: LatLng? = null,
+    val batteryWarning: String? = null
 ) : UiState
 
 sealed class RunningIntent : UiIntent {

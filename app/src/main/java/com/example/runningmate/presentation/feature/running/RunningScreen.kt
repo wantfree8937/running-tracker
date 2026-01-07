@@ -141,6 +141,41 @@ fun RunningScreen(
             }
         }
 
+        // --- Custom Battery Warning UI ---
+        state.batteryWarning?.let { warning ->
+            androidx.compose.animation.AnimatedVisibility(
+                visible = true,
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically(),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 80.dp) // Below potential status bar/top icons
+                    .padding(horizontal = 24.dp)
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.9f),
+                    contentColor = MaterialTheme.colorScheme.onError,
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(vertical = 12.dp, horizontal = 24.dp), // Increased horizontal padding
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = warning,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp // Slightly larger font
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
 
 
 

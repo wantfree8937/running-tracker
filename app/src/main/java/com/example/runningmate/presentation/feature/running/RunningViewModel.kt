@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 import com.example.runningmate.domain.use_case.GetCurrentRunUseCase
+import com.example.runningmate.domain.use_case.ObserveBatteryLevelUseCase
 
 @HiltViewModel
 class RunningViewModel @Inject constructor(
@@ -24,19 +25,26 @@ class RunningViewModel @Inject constructor(
     private val pauseRunningUseCase: PauseRunningUseCase,
     private val stopRunningUseCase: StopRunningUseCase,
     private val observeLocationUseCase: ObserveLocationUseCase,
-    private val getCurrentRunUseCase: GetCurrentRunUseCase
+    private val getCurrentRunUseCase: GetCurrentRunUseCase,
+    private val observeBatteryLevelUseCase: ObserveBatteryLevelUseCase,
+    private val getBatteryLevelUseCase: com.example.runningmate.domain.use_case.GetBatteryLevelUseCase
 ) : BaseViewModel<RunningState, RunningIntent, RunningEffect>(RunningState()) {
 
     private var timerJob: Job? = null
     private var locationJob: Job? = null
     private var sharedLocationJob: Job? = null
+    private var batteryJob: Job? = null
+    private var batteryWarningTimeoutJob: Job? = null
+    private var hasShownBatteryWarning = false
     
     // For speed calculation
     private var lastLocationTime: Long = 0L
     private var lastDistanceForSpeed: Float = 0f
+    private var lastLocation: LatLng? = null
 
     init {
         startObservingSharedLocation()
+        startObservingBattery()
         restoreRunState()
     }
 
@@ -46,14 +54,6 @@ class RunningViewModel @Inject constructor(
             if (currentRun != null) {
                 // Restore state
                 val now = System.currentTimeMillis()
-                // Assuming continuous run for simpler logic, or we can trust duration from DB.
-                // If service was running, duration increases.
-                // We'll trust current state from DB but update duration to be relative to now if running?
-                // Actually, duplicate logic with Service restoration:
-                // Service restores, starts tracking -> DataSource has points.
-                // ViewModel sees points via `startObservingSharedLocation`.
-                // We just need to set `isRunning` and `duration` offset.
-                
                 val duration = System.currentTimeMillis() - currentRun.startTime
                 
                 setState { 
@@ -70,6 +70,7 @@ class RunningViewModel @Inject constructor(
     }
 
     override fun handleIntent(intent: RunningIntent) {
+        android.util.Log.d("RunningViewModel", "handleIntent: $intent")
         when (intent) {
             is RunningIntent.PermissionGranted -> {
                 startObservingLocation()
@@ -83,94 +84,29 @@ class RunningViewModel @Inject constructor(
         }
     }
 
-    private fun startObservingSharedLocation() {
-        if (sharedLocationJob?.isActive == true) return
-        
-        sharedLocationJob = viewModelScope.launch {
-            // Collect the entire path list regardless of isRunning state
-            observeLocationUseCase.pathPointsFlow.collect { paths -> // paths is List<List<LatLng>>
-                if (paths.isNotEmpty()) {
-                    val currentDistance = calculateTotalDistance(paths)
-                    val newSpeed = calculateCurrentSpeed(currentDistance)
-                    val newCalories = calculateCalories(currentDistance)
-                    
-                    val lastPoint = paths.lastOrNull()?.lastOrNull()
-                    
-                    setState { 
-                        copy(
-                            pathPoints = paths,
-                            currentLocation = lastPoint ?: currentLocation,
-                            distanceMeters = currentDistance,
-                            currentSpeedKmh = newSpeed,
-                            caloriesBurned = newCalories
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    private fun calculateTotalDistance(paths: List<List<LatLng>>): Float {
-        var total = 0f
-        for (segment in paths) {
-            for (i in 0 until segment.size - 1) {
-                total += calculateDistance(segment[i], segment[i + 1])
-            }
-        }
-        return total
-    }
-    
-    private fun calculateCurrentSpeed(currentDistance: Float): Float {
-        val now = System.currentTimeMillis()
-        if (lastLocationTime == 0L) {
-            lastLocationTime = now
-            lastDistanceForSpeed = currentDistance
-            return 0f
-        }
-        
-        val timeDiff = now - lastLocationTime
-        if (timeDiff > 2000) { // Update speed if more than 2 seconds passed (to avoid noise)
-            val distanceDiff = currentDistance - lastDistanceForSpeed
-            if (distanceDiff < 0) return 0f // Should not happen
-            
-            // Speed in m/s
-            val speedMs = distanceDiff / (timeDiff / 1000f)
-            // Speed in km/h
-            val speedKmh = speedMs * 3.6f
-            
-            lastLocationTime = now
-            lastDistanceForSpeed = currentDistance
-            
-            // Filter crazy spikes
-            return if (speedKmh > 40f) currentState.currentSpeedKmh else speedKmh
-        }
-        return currentState.currentSpeedKmh // Keep previous speed
-    }
-
-    private fun calculateCalories(distanceMeters: Float): Int {
-        // Approx 60 kcal per km for average person
-        return (distanceMeters / 1000f * 60).toInt()
-    }
-
-    private fun startObservingLocation() {
-        if (locationJob?.isActive == true) return
-
-        locationJob = viewModelScope.launch {
-            try {
-                android.util.Log.d("RunningViewModel", "Starting location observation")
-                observeLocationUseCase()
-                    .collect { location ->
-                        setState { copy(currentLocation = location) }
-                    }
-            } catch (e: Exception) {
-                android.util.Log.e("RunningViewModel", "Error observing location", e)
-            }
-        }
-    }
-
     private fun startRunning() {
-        if (timerJob?.isActive == true) return
+        android.util.Log.d("RunningViewModel", "startRunning called. TimerActive: ${timerJob?.isActive}")
+        if (timerJob?.isActive == true) {
+            android.util.Log.d("RunningViewModel", "startRunning ignored: Timer already active")
+            return
+        }
+
+        // Reset state for new run segment
+        hasShownBatteryWarning = false
         
+        // Initial Battery Check
+        val batteryLevel = getBatteryLevelUseCase()
+        android.util.Log.d("RunningViewModel", "startRunning: Initial Check - level=$batteryLevel")
+        if (batteryLevel != -1 && batteryLevel <= 30) {
+            android.util.Log.d("RunningViewModel", "startRunning: Initial WARNING TRIGGERED")
+            showBatteryWarning("배터리가 부족합니다 ($batteryLevel%)")
+            hasShownBatteryWarning = true
+        } else {
+            android.util.Log.d("RunningViewModel", "startRunning: Initial Check OK or Unknown")
+            setState { copy(batteryWarning = null) }
+            hasShownBatteryWarning = false
+        }
+
         // Reset speed calc helpers on start/resume
         lastLocationTime = System.currentTimeMillis()
         lastDistanceForSpeed = currentState.distanceMeters
@@ -238,6 +174,80 @@ class RunningViewModel @Inject constructor(
             result
         )
         return result[0]
+    }
+
+    private fun startObservingSharedLocation() {
+        sharedLocationJob?.cancel()
+        sharedLocationJob = viewModelScope.launch {
+            observeLocationUseCase.pathPointsFlow.collect { points ->
+                setState { copy(pathPoints = points) }
+            }
+        }
+    }
+
+    private fun startObservingLocation() {
+        locationJob?.cancel()
+        locationJob = viewModelScope.launch {
+            observeLocationUseCase().collect { location ->
+                if (currentState.isRunActive) {
+                    val lastLoc = lastLocation
+                    val timestamp = System.currentTimeMillis()
+
+                    if (lastLoc != null) {
+                        val distance = calculateDistance(lastLoc, location)
+                        val timeDiff = timestamp - lastLocationTime
+                        val speed = if (timeDiff > 0) {
+                            (distance / 1000f) / (timeDiff / 3600000f) // km / h
+                        } else 0f
+
+                        val newDistance = currentState.distanceMeters + distance
+                        val newCalories = (newDistance / 1000f) * 60 // Rough estimation: 60kcal/km
+
+                        setState {
+                            copy(
+                                distanceMeters = newDistance,
+                                currentSpeedKmh = speed,
+                                caloriesBurned = newCalories.toInt()
+                            )
+                        }
+                    }
+                    lastLocation = location
+                    lastLocationTime = timestamp
+                } else {
+                    lastLocation = location
+                    lastLocationTime = System.currentTimeMillis()
+                }
+                
+                // Update current location for Map Focus
+                setState { copy(currentLocation = location) }
+            }
+        }
+    }
+
+    private fun startObservingBattery() {
+        batteryJob?.cancel()
+        batteryJob = viewModelScope.launch {
+            observeBatteryLevelUseCase().collect { level ->
+                android.util.Log.d("RunningViewModel", "Battery Flow Update: $level, isRunning=${currentState.isRunning}, hasShown=$hasShownBatteryWarning")
+                if (currentState.isRunning && level != -1 && level <= 30 && !hasShownBatteryWarning) {
+                    android.util.Log.d("RunningViewModel", "Battery Flow WARNING TRIGGERED")
+                    showBatteryWarning("배터리가 부족합니다 ($level%)")
+                    hasShownBatteryWarning = true
+                } else if (level > 30) {
+                    setState { copy(batteryWarning = null) }
+                    hasShownBatteryWarning = false
+                }
+            }
+        }
+    }
+
+    private fun showBatteryWarning(message: String) {
+        setState { copy(batteryWarning = message) }
+        batteryWarningTimeoutJob?.cancel()
+        batteryWarningTimeoutJob = viewModelScope.launch {
+            delay(5000L) // 5초 후 경고 숨김
+            setState { copy(batteryWarning = null) }
+        }
     }
 }
 

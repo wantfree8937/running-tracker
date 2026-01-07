@@ -32,4 +32,10 @@ object AppModule {
     fun provideRunningRepository(db: RunningDatabase): RunningRepository {
         return RunningRepositoryImpl(db.runningDao)
     }
+
+    @Provides
+    @Singleton
+    fun provideDeviceRepository(app: Application): com.example.runningmate.domain.repository.DeviceRepository {
+        return com.example.runningmate.data.repository.DeviceRepositoryImpl(app)
+    }
 }
